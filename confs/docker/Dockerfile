@@ -13,6 +13,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && docker-php-ext-enable redis \
     && rm -rf /var/lib/apt/lists/*
 
+RUN apt-get update && apt-get install -y mariadb-client
+
 # === Copier le code GLPI ===
 # Structure recommandée :
 # /var/www/html/glpi/public -> fichiers publics (index.php, .htaccess)
