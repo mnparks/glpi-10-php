@@ -1,41 +1,33 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# ========================
-# 🔧 Variables
-# ========================
 ENV_FILE=".env"
-GPG_FILE=".env.gpg"
 MYSQL_ROOT_PASSWORD=""
 MYSQL_DATABASE=""
 MYSQL_USER=""
 MYSQL_PASSWORD=""
 LISTEN_PORT=""
-GPG_PASS=""
 
 OLD_DB_HOST=""
 OLD_DB_USER=""
 OLD_DB_PASSWORD=""
 OLD_DB_NAME=""
 
-# ========================
-# 🧹 Fonction de nettoyage
-# ========================
+# Fonction de nettoyage si Ctrl-C
 cleanup() {
-  stty echo 2>/dev/null || true  # restaure l’affichage du terminal
+  stty echo 2>/dev/null || true  # restaure l'affichage du terminal
+  unset GPG_PASS 2>/dev/null || true
   exit 1
 }
 trap cleanup SIGINT
 
-# ========================
-# 📦 Vérifie si .env existe déjà
-# ========================
+# Vérifier si .env existe déjà
 if [ -f "$ENV_FILE" ]; then
   echo ".env existe déjà."
   read -r -p "Voulez-vous l'écraser ? [y/N] : " resp
   resp=${resp:-N}
   case "$resp" in
-    [yY]|[yY][eE][sS]) 
+    [yY]|[yY][eE][sS])
       echo "Écrasement de $ENV_FILE..."
       ;;
     *)
@@ -45,9 +37,6 @@ if [ -f "$ENV_FILE" ]; then
   esac
 fi
 
-# ========================
-# 🧩 Fonction générique de saisie
-# ========================
 create_env_variable() {
     local prompt="$1"
     local type="$2"
@@ -55,7 +44,7 @@ create_env_variable() {
     local password=""
     local password_confirm=""
     local input=""
-    
+
     if [ "$type" == "DATABASE_INFO" ]; then
         printf "%s" "$prompt"
         read -r input
@@ -67,17 +56,17 @@ create_env_variable() {
           read -r input
           if [[ "$input" =~ ^[0-9]+$ ]] && [ "$input" -ge 1 ] && [ "$input" -le 65535 ]; then
               if ss -tuln | grep -q ":$input\b"; then
-                  echo "❌ Le port $input est déjà utilisé. Veuillez en choisir un autre."
+                  echo "Le port $input est déjà utilisé. Veuillez en choisir un autre."
               else
                   declare -g "$variable=$input"
                   break
               fi
           else
-              echo "❌ Veuillez entrer un numéro de port valide (1-65535)."
+              echo "Veuillez entrer un numéro de port valide (1-65535)."
           fi
         done
 
-    else  # Mot de passe
+    else
         while true; do
             printf "%s" "$prompt"
             stty -echo
@@ -95,10 +84,12 @@ create_env_variable() {
                 eval "$variable='$password'"
                 break
             else
-                echo "❌ Les mots de passe ne correspondent pas. Veuillez réessayer."
+                echo "Les mots de passe ne correspondent pas. Veuillez réessayer."
+                password=""
+                password_confirm=""
             fi
         done
-    fi 
+    fi
 }
 
 # ==== INFOS ANCIENNE BASE ====
@@ -114,9 +105,7 @@ create_env_variable "Entrez le nom de la nouvelle base de données : " "DATABASE
 create_env_variable "Entrez le nom du nouvel utilisateur MySQL : " "DATABASE_INFO" MYSQL_USER
 create_env_variable "Entrez le mot de passe de l'utilisateur MySQL $MYSQL_USER : " "PASSWORD" MYSQL_PASSWORD
 
-# ========================
-# 📝 Écriture du fichier .env
-# ========================
+# ==== ÉCRITURE DU FICHIER .env ====
 cat > "$ENV_FILE" <<EOF
 MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD
 MYSQL_DATABASE=$MYSQL_DATABASE
@@ -126,8 +115,8 @@ LISTEN_PORT=$LISTEN_PORT
 EOF
 
 chmod 600 "$ENV_FILE"
-echo "✅ .env créé avec succès et permissions définies sur 600."
-echo "📁 Emplacement : $(pwd)/$ENV_FILE"
+echo ".env créé avec succès et permissions définies sur 600."
+echo "Emplacement : $(pwd)/$ENV_FILE"
 
 # ==== EXPORTER L'ANCIENNE BASE ====
 BACKUP_FILE="old_db_$(date +%Y%m%d_%H%M%S).sql"
@@ -135,29 +124,22 @@ echo "Export de l'ancienne base de données '$OLD_DB_NAME' depuis $OLD_DB_HOST..
 mysqldump -h "$OLD_DB_HOST" -u "$OLD_DB_USER" -p"$OLD_DB_PASSWORD" "$OLD_DB_NAME" > "$BACKUP_FILE"
 echo "✅ Export terminé : $BACKUP_FILE"
 
-if [ -f "$GPG_FILE" ]; then
-  read -r -p ".env.gpg existe déjà. Voulez-vous le remplacer ? [y/N] : " resp
-  [[ $resp =~ ^[Yy]$ ]] || { echo "Abandon."; exit 0; }
-fi
-
+# ==== CHIFFRER LE .env (MODE BATCH) ====
 read -s -p "Entrez une phrase secrète pour chiffrer le .env : " GPG_PASS
 printf "\n"
 
 gpg --batch --yes --passphrase "$GPG_PASS" -c "$ENV_FILE"
-echo "✅ Fichier .env chiffré avec succès ($GPG_FILE créé)"
+unset GPG_PASS
+echo "✅ Fichier .env chiffré avec succès (.env.gpg créé)"
 
-
-gpg --batch --yes --passphrase "$GPG_PASS" -d "$GPG_FILE" > "$ENV_FILE" 2>/dev/null || {
-  echo "⚠️ Erreur de déchiffrement. Vérifiez votre phrase secrète."
-  exit 1
-}
-
-echo "🚀 Démarrage du service Docker..."
-docker compose --env-file .env -f confs/docker/docker-compose.yml up -d
+# ==== DÉCHIFFRER ET DÉMARRER DOCKER ====
+gpg --batch --yes --passphrase "$GPG_PASS" -d "$ENV_FILE.gpg" > "$ENV_FILE" 2>/dev/null || true
+echo "Démarrage du service Docker..."
+docker compose --env-file "$ENV_FILE" -f confs/docker/docker-compose.yml up -d
 
 # ==== ATTENTE DU CONTAINER MYSQL ====
 echo "Vérification du démarrage de MySQL..."
-MYSQL_CONTAINER=glpi-database
+MYSQL_CONTAINER=$(docker ps --filter "ancestor=mysql" --format "{{.ID}}" | head -n 1)
 timeout=60
 while [ $timeout -gt 0 ]; do
   if docker exec "$MYSQL_CONTAINER" mysqladmin ping -h"localhost" --silent; then
@@ -182,4 +164,3 @@ echo "✅ Import terminé avec succès dans la base '$MYSQL_DATABASE'."
 # ==== NETTOYAGE ====
 shred -u "$ENV_FILE"
 echo "Fichier .env supprimé en toute sécurité."
-unset GPG_PASS
