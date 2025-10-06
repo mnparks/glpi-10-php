@@ -122,7 +122,7 @@ echo "Emplacement : $(pwd)/$ENV_FILE"
 BACKUP_FILE="old_db_$(date +%Y%m%d_%H%M%S).sql"
 echo "Export de l'ancienne base de données '$OLD_DB_NAME' depuis $OLD_DB_HOST..."
 mysqldump -h "$OLD_DB_HOST" -u "$OLD_DB_USER" -p"$OLD_DB_PASSWORD" "$OLD_DB_NAME" > "$BACKUP_FILE"
-echo "✅ Export terminé : $BACKUP_FILE"
+echo "Export terminé : $BACKUP_FILE"
 
 # ==== CHIFFRER LE .env (MODE BATCH) ====
 read -s -p "Entrez une phrase secrète pour chiffrer le .env : " GPG_PASS
@@ -130,7 +130,7 @@ printf "\n"
 
 gpg --batch --yes --passphrase "$GPG_PASS" -c "$ENV_FILE"
 unset GPG_PASS
-echo "✅ Fichier .env chiffré avec succès (.env.gpg créé)"
+echo "Fichier .env chiffré avec succès (.env.gpg créé)"
 
 # ==== DÉCHIFFRER ET DÉMARRER DOCKER ====
 gpg --batch --yes --passphrase "$GPG_PASS" -d "$ENV_FILE.gpg" > "$ENV_FILE" 2>/dev/null || true
@@ -143,7 +143,7 @@ MYSQL_CONTAINER=$(docker ps --filter "ancestor=mysql" --format "{{.ID}}" | head 
 timeout=60
 while [ $timeout -gt 0 ]; do
   if docker exec "$MYSQL_CONTAINER" mysqladmin ping -h"localhost" --silent; then
-    echo "✅ MySQL est prêt."
+    echo "MySQL est prêt."
     break
   fi
   sleep 2
@@ -151,7 +151,7 @@ while [ $timeout -gt 0 ]; do
 done
 
 if [ $timeout -le 0 ]; then
-  echo "❌ MySQL ne répond pas après 60 secondes. Abandon."
+  echo "MySQL ne répond pas après 60 secondes. Abandon."
   exit 1
 fi
 
@@ -159,7 +159,7 @@ fi
 echo "Import du dump dans la nouvelle base '$MYSQL_DATABASE'..."
 docker exec -i "$MYSQL_CONTAINER" \
   mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" < "$BACKUP_FILE"
-echo "✅ Import terminé avec succès dans la base '$MYSQL_DATABASE'."
+echo "Import terminé avec succès dans la base '$MYSQL_DATABASE'."
 
 # ==== NETTOYAGE ====
 shred -u "$ENV_FILE"

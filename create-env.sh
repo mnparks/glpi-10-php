@@ -73,7 +73,7 @@ create_env_variable() {
                   break
               fi
           else
-              echo "❌ Veuillez entrer un numéro de port valide (1-65535)."
+              echo "Veuillez entrer un numéro de port valide (1-65535)."
           fi
         done
 
@@ -95,7 +95,7 @@ create_env_variable() {
                 eval "$variable='$password'"
                 break
             else
-                echo "❌ Les mots de passe ne correspondent pas. Veuillez réessayer."
+                echo "Les mots de passe ne correspondent pas. Veuillez réessayer."
             fi
         done
     fi 
@@ -126,14 +126,14 @@ LISTEN_PORT=$LISTEN_PORT
 EOF
 
 chmod 600 "$ENV_FILE"
-echo "✅ .env créé avec succès et permissions définies sur 600."
-echo "📁 Emplacement : $(pwd)/$ENV_FILE"
+echo ".env créé avec succès et permissions définies sur 600."
+echo "Emplacement : $(pwd)/$ENV_FILE"
 
 # ==== EXPORTER L'ANCIENNE BASE ====
 BACKUP_FILE="old_db_$(date +%Y%m%d_%H%M%S).sql"
 echo "Export de l'ancienne base de données '$OLD_DB_NAME' depuis $OLD_DB_HOST..."
 mysqldump -h "$OLD_DB_HOST" -u "$OLD_DB_USER" -p"$OLD_DB_PASSWORD" "$OLD_DB_NAME" > "$BACKUP_FILE"
-echo "✅ Export terminé : $BACKUP_FILE"
+echo "Export terminé : $BACKUP_FILE"
 
 if [ -f "$GPG_FILE" ]; then
   read -r -p ".env.gpg existe déjà. Voulez-vous le remplacer ? [y/N] : " resp
@@ -144,15 +144,15 @@ read -s -p "Entrez une phrase secrète pour chiffrer le .env : " GPG_PASS
 printf "\n"
 
 gpg --batch --yes --passphrase "$GPG_PASS" -c "$ENV_FILE"
-echo "✅ Fichier .env chiffré avec succès ($GPG_FILE créé)"
+echo "Fichier .env chiffré avec succès ($GPG_FILE créé)"
 
 
 gpg --batch --yes --passphrase "$GPG_PASS" -d "$GPG_FILE" > "$ENV_FILE" 2>/dev/null || {
-  echo "⚠️ Erreur de déchiffrement. Vérifiez votre phrase secrète."
+  echo "erreur de déchiffrement. Vérifiez votre phrase secrète."
   exit 1
 }
 
-echo "🚀 Démarrage du service Docker..."
+echo " Démarrage du service Docker..."
 docker compose --env-file .env -f confs/docker/docker-compose.yml up -d
 
 # ==== ATTENTE DU CONTAINER MYSQL ====
@@ -161,7 +161,7 @@ MYSQL_CONTAINER=glpi-database
 timeout=60
 while [ $timeout -gt 0 ]; do
   if docker exec "$MYSQL_CONTAINER" mysqladmin ping -h"localhost" --silent; then
-    echo "✅ MySQL est prêt."
+    echo "MySQL est prêt."
     break
   fi
   sleep 2
@@ -169,7 +169,7 @@ while [ $timeout -gt 0 ]; do
 done
 
 if [ $timeout -le 0 ]; then
-  echo "❌ MySQL ne répond pas après 60 secondes. Abandon."
+  echo "MySQL ne répond pas après 60 secondes. Abandon."
   exit 1
 fi
 
@@ -177,7 +177,7 @@ fi
 echo "Import du dump dans la nouvelle base '$MYSQL_DATABASE'..."
 docker exec -i "$MYSQL_CONTAINER" \
   mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" < "$BACKUP_FILE"
-echo "✅ Import terminé avec succès dans la base '$MYSQL_DATABASE'."
+echo "Import terminé avec succès dans la base '$MYSQL_DATABASE'."
 
 # ==== NETTOYAGE ====
 shred -u "$ENV_FILE"
