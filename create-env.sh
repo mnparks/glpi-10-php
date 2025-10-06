@@ -175,8 +175,32 @@ fi
 
 # ==== IMPORT DU DUMP ====
 echo "Import du dump dans la nouvelle base '$MYSQL_DATABASE'..."
-docker exec -i "$MYSQL_CONTAINER" \
-  mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" < "$BACKUP_FILE"
+
+MYSQL_CONTAINER=glpi-database
+
+while true; do
+  # On teste la connexion à MySQL dans le conteneur
+  if docker exec "$MYSQL_CONTAINER" \
+    mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" -e "USE $MYSQL_DATABASE;" >/dev/null 2>&1; then
+    echo "✅ Connexion MySQL réussie. Début de l'import..."
+    docker exec -i "$MYSQL_CONTAINER" \
+      mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" < "$BACKUP_FILE"
+    echo "✅ Import terminé avec succès dans la base '$MYSQL_DATABASE'."
+    break
+  else
+    echo "❌ Échec de connexion à la base MySQL dans le conteneur."
+    echo "Veuillez vérifier les identifiants MySQL."
+    
+    # On redemande les identifiants
+    read -r -p "Entrez le nom de l'utilisateur MySQL : " MYSQL_USER
+
+    printf "Entrez le mot de passe de l'utilisateur MySQL %s : " "$MYSQL_USER"
+    stty -echo
+    read -r MYSQL_PASSWORD
+    stty echo
+    printf "\n"
+  fi
+done
 echo "Import terminé avec succès dans la base '$MYSQL_DATABASE'."
 
 # ==== NETTOYAGE ====
