@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# ========================
-# 🔧 Variables
-# ========================
+# Variables
+
 ENV_FILE=".env"
 GPG_FILE=".env.gpg"
 MYSQL_ROOT_PASSWORD=""
@@ -18,18 +17,14 @@ OLD_DB_USER=""
 OLD_DB_PASSWORD=""
 OLD_DB_NAME=""
 
-# ========================
-# 🧹 Fonction de nettoyage
-# ========================
+# Fonction de nettoyage
 cleanup() {
   stty echo 2>/dev/null || true  # restaure l’affichage du terminal
   exit 1
 }
 trap cleanup SIGINT
 
-# ========================
-# 📦 Vérifie si .env existe déjà
-# ========================
+# Vérifie si .env existe déjà
 if [ -f "$ENV_FILE" ]; then
   echo ".env existe déjà."
   read -r -p "Voulez-vous l'écraser ? [y/N] : " resp
@@ -45,9 +40,7 @@ if [ -f "$ENV_FILE" ]; then
   esac
 fi
 
-# ========================
-# 🧩 Fonction générique de saisie
-# ========================
+# Fonction générique de saisie
 create_env_variable() {
     local prompt="$1"
     local type="$2"
@@ -67,7 +60,7 @@ create_env_variable() {
           read -r input
           if [[ "$input" =~ ^[0-9]+$ ]] && [ "$input" -ge 1 ] && [ "$input" -le 65535 ]; then
               if ss -tuln | grep -q ":$input\b"; then
-                  echo "❌ Le port $input est déjà utilisé. Veuillez en choisir un autre."
+                  echo "Le port $input est déjà utilisé. Veuillez en choisir un autre."
               else
                   declare -g "$variable=$input"
                   break
@@ -108,15 +101,15 @@ create_env_variable "Entrez le mot de passe de l'utilisateur de l'ancienne base:
 create_env_variable "Entrez le nom de l'ancienne base de données: " "DATABASE_INFO" OLD_DB_NAME
 
 # ==== NOUVELLE BASE ====
-create_env_variable "Entrez le port d'écoute : " "PORT" LISTEN_PORT
+create_env_variable "Entrez le port d'écoute de la nouvelle version de GLPI: " "PORT" LISTEN_PORT
 create_env_variable "Entrez le mot de passe root MySQL : " "PASSWORD" MYSQL_ROOT_PASSWORD
 create_env_variable "Entrez le nom de la nouvelle base de données : " "DATABASE_INFO" MYSQL_DATABASE
 create_env_variable "Entrez le nom du nouvel utilisateur MySQL : " "DATABASE_INFO" MYSQL_USER
 create_env_variable "Entrez le mot de passe de l'utilisateur MySQL $MYSQL_USER : " "PASSWORD" MYSQL_PASSWORD
 
-# ========================
-# 📝 Écriture du fichier .env
-# ========================
+ 
+# Écriture du fichier .env
+
 cat > "$ENV_FILE" <<EOF
 MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD
 MYSQL_DATABASE=$MYSQL_DATABASE
@@ -182,13 +175,13 @@ while true; do
   # On teste la connexion à MySQL dans le conteneur
   if docker exec "$MYSQL_CONTAINER" \
     mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" -e "USE $MYSQL_DATABASE;" >/dev/null 2>&1; then
-    echo "✅ Connexion MySQL réussie. Début de l'import..."
+    echo "Connexion MySQL réussie. Début de l'import..."
     docker exec -i "$MYSQL_CONTAINER" \
       mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" < "$BACKUP_FILE"
-    echo "✅ Import terminé avec succès dans la base '$MYSQL_DATABASE'."
+    echo "Import terminé avec succès dans la base '$MYSQL_DATABASE'."
     break
   else
-    echo "❌ Échec de connexion à la base MySQL dans le conteneur."
+    echo "Échec de connexion à la base MySQL dans le conteneur."
     echo "Veuillez vérifier les identifiants MySQL."
     
     # On redemande les identifiants
