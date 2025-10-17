@@ -6,7 +6,7 @@ set -euo pipefail
 CONTAINER_NAME="glpi-php"
 LOCAL_FOLDER="/var/www/html/glpi/files"
 CONTAINER_FOLDER="/var/www/html/glpi/files"
-TMP_ARCHIVE="/home/safidy/glpi-files.tar.gz"
+TMP_ARCHIVE="/home/glpi/glpi-files.tar.gz"
 REMOTE_ARCHIVE="/var/www/html/glpi-files.tar.gz"
 
 # Sous-dossiers à exclure
