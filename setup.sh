@@ -4,6 +4,7 @@ set -euo pipefail
 # Fichiers des sous-scripts
 ENV_SCRIPT="./create-env.sh"
 BUILD_SCRIPT="./build-glpi.sh"
+COPY_FILES_SCRIPT="./copy-files.sh"
 
 usage() {
   echo "Usage: $0 [env|build|all]"
@@ -33,6 +34,10 @@ case "$1" in
 
     echo "==> Génération du .env"
     bash "$ENV_SCRIPT"
+    echo "==> Terminé !"
+
+    echo "==> Copie des fichiers dauvegardés dans le volume"
+    bash "$COPY_FILES_SCRIPT"
     echo "==> Terminé !"
     ;;
   *)
