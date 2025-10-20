@@ -1,12 +1,22 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# CONFIGURATION
+get_current_user() {
+  if [ -n "${SUDO_USER:-}" ]; then
+    # Si le script est lancé avec sudo, utiliser l’utilisateur d’origine
+    echo "$SUDO_USER"
+  else
+    # Sinon, l’utilisateur actuel
+    whoami 2>/dev/null || echo "$USER"
+  fi
+}
 
+get_current_user
+
+CURRENT_USER=$(get_current_user)
 CONTAINER_NAME="glpi-php"
-LOCAL_FOLDER="/var/www/html/glpi/files"
 CONTAINER_FOLDER="/var/www/html/glpi/files"
-TMP_ARCHIVE="/home/glpi/glpi-files.tar.gz"
+TMP_ARCHIVE="/home/$CURRENT_USER/glpi-files.tar.gz"
 REMOTE_ARCHIVE="/var/www/html/glpi-files.tar.gz"
 
 # Sous-dossiers à exclure
@@ -21,38 +31,71 @@ EXCLUDE_FOLDERS=(
   "_tmp"
 )
 
-# Construire les options --exclude pour tar
+
+ask_local_folder() {
+  local input=""
+  while true; do
+    echo
+    echo "Veuillez saisir le chemin du dossier GLPI 9 actuel (ex: /var/www/html/glpi) :"
+    read -r input
+
+    # Vérifie si l’utilisateur veut annuler
+    if [ -z "$input" ]; then
+      echo "Aucun chemin saisi. Veuillez réessayer ou taper Ctrl+C pour quitter."
+      continue
+    fi
+
+    # Vérifie si le dossier existe
+    if [ -d "$input" ]; then
+      LOCAL_FOLDER="$input"
+      echo "Dossier GLPI local défini sur : $LOCAL_FOLDER"
+      break
+    else
+      echo "Erreur : le dossier '$input' n'existe pas."
+      echo "Veuillez réessayer..."
+    fi
+  done
+}
+
+verify_local_folder() {
+  if [ ! -d "$LOCAL_FOLDER" ]; then
+    echo "Erreur : le dossier local $LOCAL_FOLDER n'existe pas."
+    exit 1
+  fi
+}
+
+
+# 1. Demande du dossier à l’utilisateur
+ask_local_folder
+
+# 2. Vérification du dossier local
+verify_local_folder
+
+# 3. Construire les options d’exclusion
 EXCLUDE_OPTS=""
 for folder in "${EXCLUDE_FOLDERS[@]}"; do
   EXCLUDE_OPTS+=" --exclude=$folder"
 done
 
-# Vérification du dossier local
-
-if [ ! -d "$LOCAL_FOLDER" ]; then
-  echo "Erreur : le dossier local $LOCAL_FOLDER n'existe pas."
-  exit 1
-fi
-
-
-# Créer l'archive en excluant certains dossiers
-
+# 4. Créer l’archive
+echo
 echo "Création de l'archive en excluant : ${EXCLUDE_FOLDERS[*]}"
-tar -czf "$TMP_ARCHIVE" -C "$LOCAL_FOLDER" $EXCLUDE_OPTS .
+tar -czf "$TMP_ARCHIVE" -C "$LOCAL_FOLDER/files" $EXCLUDE_OPTS .
 
-# Copier l'archive dans le conteneur
+# 5. Copier dans le conteneur
+echo
 echo "Copie de l'archive vers le conteneur $CONTAINER_NAME..."
 docker cp "$TMP_ARCHIVE" "$CONTAINER_NAME:$REMOTE_ARCHIVE"
 
-# Construire l'exclusion pour find
-
+# 6. Construire exclusion pour find
 EXCLUDE_FIND=""
 for folder in "${EXCLUDE_FOLDERS[@]}"; do
   EXCLUDE_FIND+=" -not -path $CONTAINER_FOLDER/$folder*"
 done
 
-# Nettoyer et extraire dans le conteneur
-echo "Nettoyage de l'ancien contenu (hors dossiers exclus) et extraction..."
+# 7. Nettoyage + Extraction dans le conteneur
+echo
+echo "Mise a jour des permissions..."
 docker exec -i "$CONTAINER_NAME" bash -c "
   find $CONTAINER_FOLDER/* $EXCLUDE_FIND -exec rm -rf {} +;
   tar -xzf $REMOTE_ARCHIVE -C $CONTAINER_FOLDER;
@@ -61,6 +104,8 @@ docker exec -i "$CONTAINER_NAME" bash -c "
   chmod -R 755 /var/www/html/glpi
 "
 
+# 8. Nettoyage local
 rm -f "$TMP_ARCHIVE"
 
+echo
 echo "Déploiement terminé ! Les dossiers exclus n'ont pas été remplacés."

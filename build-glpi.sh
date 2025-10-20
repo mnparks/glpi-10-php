@@ -12,7 +12,7 @@ PORT=8080
 
 echo "==> Vérification du dossier cible $TARGET"
 if [ -d "$TARGET" ]; then
-  echo "⚠️  Le dossier $TARGET existe déjà. On saute le téléchargement/décompression."
+  echo "Le dossier $TARGET existe déjà. On saute le téléchargement/décompression."
 else
   echo "==> Téléchargement de $URL"
   wget -q "$URL" -O "$ARCHIVE"
@@ -34,7 +34,7 @@ docker build -f confs/docker/Dockerfile -t "$IMAGE_NAME" .
 
 # echo "==> Vérification si le conteneur $CONTAINER_NAME existe déjà"
 # if [ "$(docker ps -aq -f name=^${CONTAINER_NAME}$)" ]; then
-#   echo "⚠️  Le conteneur $CONTAINER_NAME existe déjà. Suppression..."
+#   echo "Le conteneur $CONTAINER_NAME existe déjà. Suppression..."
 #   docker rm -f "$CONTAINER_NAME" || true
 # fi
 
