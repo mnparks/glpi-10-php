@@ -17,7 +17,7 @@ services:
       - glpi-net
 
   glpi-php:
-    image: glpi:beta
+    image: mnp-glpi:10.0.19
     restart: unless-stopped
     container_name: glpi-php
     depends_on:

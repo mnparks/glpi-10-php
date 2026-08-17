@@ -7,7 +7,7 @@ ARCHIVE="glpi-10.0.19.tgz"
 FOLDER="glpi"
 TARGET="app"
 CONTAINER_NAME="glpi-container"
-IMAGE_NAME="glpi:beta"
+IMAGE_NAME="mnp-glpi:10.0.19"
 PORT=8080
 
 echo "==> Vérification du dossier cible $TARGET"

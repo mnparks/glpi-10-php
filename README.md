@@ -108,7 +108,7 @@ docker system prune
 Pour supprimer le conteneur et l’image :
 ```bash
 docker rm -f glpi-container
-docker rmi glpi:beta
+docker rmi mnp-glpi:10.0.19
 ```
 
 ---
