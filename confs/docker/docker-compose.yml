@@ -5,6 +5,8 @@ services:
     image: mariadb:10.11
     container_name: glpi-database
     restart: unless-stopped
+    security_opt:
+      - seccomp:unconfined
     environment:
       MARIADB_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
@@ -15,9 +17,8 @@ services:
       - data:/var/lib/mysql
     networks:
       - glpi-net
-
   glpi-php:
-    image: mnp-glpi:10.0.19
+    image: glpi:beta
     restart: unless-stopped
     container_name: glpi-php
     depends_on:

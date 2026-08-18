@@ -16,7 +16,7 @@ get_current_user
 CURRENT_USER=$(get_current_user)
 CONTAINER_NAME="glpi-php"
 CONTAINER_FOLDER="/var/www/html/glpi/files"
-TMP_ARCHIVE="/home/$CURRENT_USER/glpi-files.tar.gz"
+TMP_ARCHIVE="/home/glpi/glpi-10-php/glpi-files.tar.gz"
 REMOTE_ARCHIVE="/var/www/html/glpi-files.tar.gz"
 
 # Sous-dossiers à exclure
@@ -96,13 +96,6 @@ done
 # 7. Nettoyage + Extraction dans le conteneur
 echo
 echo "Mise a jour des permissions..."
-docker exec -i "$CONTAINER_NAME" bash -c "
-  find $CONTAINER_FOLDER/* $EXCLUDE_FIND -exec rm -rf {} +;
-  tar -xzf $REMOTE_ARCHIVE -C $CONTAINER_FOLDER;
-  rm -f $REMOTE_ARCHIVE;
-  chown -R www-data:www-data /var/www/html/glpi;
-  chmod -R 755 /var/www/html/glpi
-"
 
 # 8. Nettoyage local
 rm -f "$TMP_ARCHIVE"

@@ -102,7 +102,7 @@ create_env_variable() {
                 echo -e "${RED}Les mots de passe ne correspondent pas. Veuillez réessayer.${NC}"
             fi
         done
-    fi 
+    fi
 }
 
 # === INFOS ANCIENNE BASE ===
@@ -133,23 +133,29 @@ echo -e "${GREEN}[OK]${NC} .env créé avec succès (${ENV_FILE})"
 # === EXPORT ANCIENNE BASE ===
 BACKUP_FILE="old_db_$(date +%Y%m%d_%H%M%S).sql"
 
-echo -e "\n${YELLOW}Export de l'ancienne base de données '$OLD_DB_NAME' depuis $OLD_DB_HOST...${NC}"
+# === SÉLECTION D'UN DUMP SQL DÉJÀ EXISTANT ===
+echo -e "\n${YELLOW}Import d'une sauvegarde existante...${NC}"
 
 while true; do
-  if mysqldump -h "$OLD_DB_HOST" -u "$OLD_DB_USER" -p"$OLD_DB_PASSWORD" "$OLD_DB_NAME" > "$BACKUP_FILE" 2>/dev/null; then
-    echo -e "${GREEN}[OK]${NC} Export terminé : $BACKUP_FILE"
-    break
-  else
-    echo -e "${RED}[ERREUR] Échec de connexion à l'ancienne base MySQL.${NC}"
-    read -r -p "Host MySQL : " OLD_DB_HOST
-    read -r -p "Utilisateur MySQL : " OLD_DB_USER
-    printf "Mot de passe MySQL %s : " "$OLD_DB_USER"
-    stty -echo
-    read -r OLD_DB_PASSWORD
-    stty echo
-    printf "\n"
-    read -r -p "Nom de la base : " OLD_DB_NAME
+  read -r -p "Chemin complet du fichier .sql à importer : " BACKUP_FILE
+
+  if [ -z "$BACKUP_FILE" ]; then
+    echo -e "${RED}[ERREUR] Le chemin ne peut pas être vide.${NC}"
+    continue
   fi
+
+  if [ ! -f "$BACKUP_FILE" ]; then
+    echo -e "${RED}[ERREUR] Fichier introuvable : $BACKUP_FILE${NC}"
+    continue
+  fi
+
+  if [ ! -r "$BACKUP_FILE" ]; then
+    echo -e "${RED}[ERREUR] Fichier non lisible (droits insuffisants) : $BACKUP_FILE${NC}"
+    continue
+  fi
+
+  echo -e "${GREEN}[OK]${NC} Fichier de sauvegarde sélectionné : $BACKUP_FILE"
+  break
 done
 
 # === CHIFFREMENT .env ===
@@ -172,7 +178,7 @@ fi
 
 # === DÉMARRAGE DOCKER ===
 echo -e "\n${YELLOW}Démarrage du service Docker...${NC}"
-docker compose --env-file .env -f confs/docker/docker-compose.yml up -d
+docker-compose --env-file .env -f confs/docker/docker-compose.yml up -d
 
 # === ATTENTE DU CONTAINER MYSQL ===
 MYSQL_CONTAINER="glpi-database"
